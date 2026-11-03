@@ -1,19 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="utf-8">
     <title>Ion Battle Nft</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background-color: #121212;
+            color: white;
+            text-align: center;
+            font-family: sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #00ffff;
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+        .profile-card {
+            background-color: #1e1e1e;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.1);
+        }
+        .user-name {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .balance-label {
+            color: #888;
+            font-size: 14px;
+        }
+        .balance-amount {
+            color: #ffd700;
+            font-size: 26px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .play-btn {
+            padding: 18px 40px;
+            font-size: 20px;
+            background-color: #0088cc;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .play-btn:active {
+            background-color: #006699;
+        }
+    </style>
 </head>
-<body style="background-color: #121212; color: white; text-align: center; font-family: sans-serif; padding-top: 50px;">
-    
-    <h1 style="color: #00ffff;">Ion Battle Nft</h1>
-    <p>Добро пожаловать в игру!</p>
-    <p>Скоро здесь появятся кейсы и NFT-подарки.</p>
-    
-    <button style="padding: 15px 30px; font-size: 18px; background-color: #0088cc; color: white; border: none; border-radius: 10px; font-weight: bold; margin-top: 20px;">
-        Открыть кейс
-    </button>
+<body>
+
+    <h1>Ion Battle Nft</h1>
+
+    <div class="profile-card">
+        <div class="user-name" id="username">Загрузка...</div>
+        <div class="balance-label">Твой баланс:</div>
+        <div class="balance-amount" id="balance">0 TON</div>
+    </div>
+
+    <button class="play-btn">Открыть кейс</button>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const user = tg.initDataUnsafe?.user;
+        
+        if (user) {
+            document.getElementById('username').innerText = user.first_name;
+        } else {
+            document.getElementById('username').innerText = 'Гость';
+        }
+    </script>
 
 </body>
 </html>
