@@ -14,10 +14,10 @@ bot.start(async (ctx) => {
         .upsert({ id: userId, username: username, first_name: firstName });
 
     ctx.reply(
-        `Привет, ${firstName}! 👋\nДобро пожаловать в Ion Battle Nft.\n\nНажми на кнопку внизу, чтобы открыть игру и начать крутить кейсы! 🎁`,
-        Markup.keyboard([
-            [Markup.button.webApp('🎮 Открыть игру', 'https://ion-battle-nft.vercel.app/')]
-        ]).resize()
+        `Привет, ${firstName}! 👋\nДобро пожаловать в Ion Battle Nft.\n\nНажми на кнопку ниже, чтобы открыть игру! 🎁`,
+        Markup.inlineKeyboard([
+            Markup.button.webApp('🎮 Открыть игру', 'https://ion-battle-nft.vercel.app/')
+        ])
     );
 });
 
