@@ -5,6 +5,7 @@ module.exports = async (req, res) => {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const { userId } = req.body;
+
     if (!userId) return res.status(400).json({ error: 'No userId' });
 
     const { data: user, error: userError } = await supabase
@@ -14,6 +15,7 @@ module.exports = async (req, res) => {
         .single();
 
     if (userError || !user) return res.status(404).json({ error: 'User not found' });
+
     if (user.balance < 10) return res.status(400).json({ error: 'Недостаточно монет!' });
 
     const newBalance = user.balance - 10;
