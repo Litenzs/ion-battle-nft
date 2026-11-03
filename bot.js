@@ -9,15 +9,14 @@ bot.start(async (ctx) => {
     const username = ctx.from.username || '';
     const firstName = ctx.from.first_name || 'друг';
 
-    try {
-        await supabase
-            .from('users')
-            .upsert(
-                { id: userId, username: username, first_name: firstName },
-                { onConflict: 'id', ignoreDuplicates: false }
-            );
-    } catch (err) {
-        console.error('Supabase error:', err);
+    const { data, error } = await supabase
+        .from('users')
+        .upsert({ id: userId, username: username, first_name: firstName });
+
+    if (error) {
+        console.error('Supabase error:', error);
+        ctx.reply(`Ошибка базы данных: ${error.message}`);
+        return;
     }
 
     ctx.reply(
