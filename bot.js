@@ -13,8 +13,10 @@ bot.start(async (ctx) => {
         .from('users')
         .upsert({ id: userId, username: username, first_name: firstName });
 
+    await ctx.reply('Очищаю старые кнопки...', Markup.removeKeyboard());
+
     ctx.reply(
-        `Привет, ${firstName}! 👋\nДобро пожаловать в Ion Battle Nft.\n\nНажми на кнопку ниже, чтобы открыть игру! 🎁`,
+        `Привет, ${firstName}! 👋\nДобро пожаловать в Ion Battle Nft.\n\nНажми на кнопку ниже, чтобы открыть игру и начать крутить кейсы! 🎁`,
         Markup.inlineKeyboard([
             Markup.button.webApp('🎮 Открыть игру', 'https://ion-battle-nft.vercel.app/')
         ])
