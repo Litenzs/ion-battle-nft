@@ -20,7 +20,6 @@
         .inventory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
         .inv-item { background-color: #1e1e1e; padding: 15px 5px; border-radius: 10px; font-size: 14px; text-align: center; border: 1px solid #333; }
 
-        /* Стили для лоадера */
         .loader { border: 4px solid #333; border-top: 4px solid #00ffff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 50px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .hidden { display: none; }
@@ -29,6 +28,7 @@
 <body>
 
     <div id="loader" class="loader"></div>
+    <div id="error-box" style="color: #ff4444; font-weight: bold; margin-top: 20px;"></div>
 
     <div id="main-content" class="hidden">
         <h1>Ion Battle Nft</h1>
@@ -60,37 +60,44 @@
         const inventoryEl = document.getElementById('inventory');
         const loader = document.getElementById('loader');
         const mainContent = document.getElementById('main-content');
+        const errorBox = document.getElementById('error-box');
 
         async function loadProfile() {
             if (!user) return;
-            const response = await fetch('/api/getProfile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id })
-            });
-            const data = await response.json();
-            
-            balanceEl.innerText = data.balance + ' TON';
-            
-            if (data.inventory.length > 0) {
-                inventoryEl.innerHTML = '';
-                data.inventory.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'inv-item';
-                    div.innerText = item.item_name;
-                    inventoryEl.appendChild(div);
+            try {
+                const response = await fetch('/api/getProfile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id })
                 });
+                
+                if (!response.ok) {
+                    throw new Error('Сервер ответил ошибкой ' + response.status);
+                }
+
+                const data = await response.json();
+                balanceEl.innerText = data.balance + ' TON';
+                
+                if (data.inventory && data.inventory.length > 0) {
+                    inventoryEl.innerHTML = '';
+                    data.inventory.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'inv-item';
+                        div.innerText = item.item_name;
+                        inventoryEl.appendChild(div);
+                    });
+                }
+                loader.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+            } catch (err) {
+                loader.classList.add('hidden');
+                errorBox.innerText = 'Ошибка: ' + err.message;
             }
         }
 
         if (user) {
             document.getElementById('username').innerText = user.first_name;
-            // Запускаем загрузку данных
-            loadProfile().then(() => {
-                // Когда данные загрузились — скрываем лоадер и показываем игру
-                loader.classList.add('hidden');
-                mainContent.classList.remove('hidden');
-            });
+            loadProfile();
         }
 
         playBtn.addEventListener('click', async () => {
@@ -113,7 +120,6 @@
                 } else {
                     messageEl.style.color = '#00ff00';
                     messageEl.innerText = 'Вы выиграли: ' + data.prize;
-                    // Обновляем данные на экране после выигрыша
                     await loadProfile(); 
                 }
             } catch (err) {
