@@ -53,9 +53,6 @@
             width: 100%;
             box-sizing: border-box;
         }
-        .play-btn:active {
-            background-color: #006699;
-        }
     </style>
 </head>
 <body>
@@ -65,7 +62,7 @@
     <div class="profile-card">
         <div class="user-name" id="username">Загрузка...</div>
         <div class="balance-label">Твой баланс:</div>
-        <div class="balance-amount" id="balance">0 TON</div>
+        <div class="balance-amount" id="balance">...</div>
     </div>
 
     <button class="play-btn">Открыть кейс</button>
@@ -79,8 +76,28 @@
         
         if (user) {
             document.getElementById('username').innerText = user.first_name;
+            
+            fetch('/api/getUser', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ userId: user.id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.balance !== undefined) {
+                    document.getElementById('balance').innerText = data.balance + ' TON';
+                } else {
+                    document.getElementById('balance').innerText = '0 TON';
+                }
+            })
+            .catch(err => {
+                document.getElementById('balance').innerText = 'Ошибка';
+            });
         } else {
             document.getElementById('username').innerText = 'Гость';
+            document.getElementById('balance').innerText = '0 TON';
         }
     </script>
 
