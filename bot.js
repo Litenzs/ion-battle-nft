@@ -9,18 +9,12 @@ bot.start(async (ctx) => {
     const username = ctx.from.username || '';
     const firstName = ctx.from.first_name || 'друг';
 
-    const { data, error } = await supabase
+    await supabase
         .from('users')
         .upsert({ id: userId, username: username, first_name: firstName });
 
-    if (error) {
-        console.error('Supabase error:', error);
-        ctx.reply(`Ошибка базы данных: ${error.message}`);
-        return;
-    }
-
     ctx.reply(
-        `Привет, ${firstName}! 👋\nДобро пожаловать в Ion Battle Nft.\n\nТвой профиль сохранен в базе! Нажми на кнопку внизу, чтобы открыть игру! 🎁`,
+        `Привет, ${firstName}! 👋\nДобро пожаловать в Ion Battle Nft.\n\nНажми на кнопку внизу, чтобы открыть игру и начать крутить кейсы! 🎁`,
         Markup.keyboard([
             [Markup.button.webApp('🎮 Открыть игру', 'https://ion-battle-nft.vercel.app/')]
         ]).resize()
