@@ -34,30 +34,39 @@
         tg.ready();
         tg.expand();
 
-        const user = tg.initDataUnsafe?.user;
+        let user = tg.initDataUnsafe?.user;
+
+        if (!user && tg.initData) {
+            try {
+                const urlParams = new URLSearchParams(tg.initData);
+                const userStr = urlParams.get('user');
+                if (userStr) {
+                    user = JSON.parse(userStr);
+                }
+            } catch (e) {
+                console.error("Ошибка парсинга initData", e);
+            }
+        }
+
         const loader = document.getElementById('loader');
         const errorBox = document.getElementById('error-box');
         const mainContent = document.getElementById('main-content');
 
         async function loadProfile() {
-            if (!user) return;
-            
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // Таймаут 5 секунд
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
 
             try {
                 const response = await fetch('/api/getProfile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: user.id }),
-                    signal: controller.signal // Передаем сигнал для отмены
+                    signal: controller.signal
                 });
                 
                 clearTimeout(timeoutId);
                 
-                if (!response.ok) {
-                    throw new Error('Сервер вернул ошибку ' + response.status);
-                }
+                if (!response.ok) throw new Error('Сервер вернул ошибку ' + response.status);
 
                 const data = await response.json();
                 document.getElementById('username').innerText = user.first_name;
@@ -68,11 +77,9 @@
             } catch (err) {
                 clearTimeout(timeoutId);
                 loader.classList.add('hidden');
-                if (err.name === 'AbortError') {
-                    errorBox.innerText = 'Ошибка: Сервер не отвечает (превышено время ожидания)';
-                } else {
-                    errorBox.innerText = 'Ошибка: ' + err.message;
-                }
+                errorBox.innerText = err.name === 'AbortError' 
+                    ? 'Ошибка: Сервер не отвечает (превышено время ожидания)' 
+                    : 'Ошибка: ' + err.message;
             }
         }
 
@@ -80,7 +87,7 @@
             loadProfile();
         } else {
             loader.classList.add('hidden');
-            errorBox.innerText = 'Ошибка: Telegram не передал данные пользователя';
+            errorBox.innerText = 'Ошибка: Не удалось получить данные от Telegram. Убедитесь, что вы открываете игру из бота.';
         }
     </script>
 
