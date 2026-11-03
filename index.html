@@ -6,53 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body {
-            background-color: #121212;
-            color: white;
-            text-align: center;
-            font-family: sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-        h1 {
-            color: #00ffff;
-            font-size: 28px;
-            margin-bottom: 30px;
-        }
-        .profile-card {
-            background-color: #1e1e1e;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.1);
-        }
-        .user-name {
-            font-size: 22px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .balance-label {
-            color: #888;
-            font-size: 14px;
-        }
-        .balance-amount {
-            color: #ffd700;
-            font-size: 26px;
-            font-weight: bold;
-            margin-top: 5px;
-        }
-        .play-btn {
-            padding: 18px 40px;
-            font-size: 20px;
-            background-color: #0088cc;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            box-sizing: border-box;
-        }
+        body { background-color: #121212; color: white; text-align: center; font-family: sans-serif; margin: 0; padding: 20px; }
+        h1 { color: #00ffff; font-size: 28px; margin-bottom: 20px; }
+        .profile-card { background-color: #1e1e1e; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0, 255, 255, 0.1); }
+        .user-name { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+        .balance-label { color: #888; font-size: 14px; }
+        .balance-amount { color: #ffd700; font-size: 26px; font-weight: bold; margin-top: 5px; }
+        .message-box { font-size: 20px; font-weight: bold; margin: 20px 0; min-height: 30px; color: #00ff00; }
+        .play-btn { padding: 18px 40px; font-size: 20px; background-color: #0088cc; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; }
+        .play-btn:disabled { background-color: #555; }
     </style>
 </head>
 <body>
@@ -65,7 +27,9 @@
         <div class="balance-amount" id="balance">...</div>
     </div>
 
-    <button class="play-btn">Открыть кейс</button>
+    <div class="message-box" id="message"></div>
+
+    <button class="play-btn" id="playBtn">Открыть кейс (10 TON)</button>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -73,32 +37,55 @@
         tg.expand();
 
         const user = tg.initDataUnsafe?.user;
-        
+        const playBtn = document.getElementById('playBtn');
+        const balanceEl = document.getElementById('balance');
+        const messageEl = document.getElementById('message');
+
         if (user) {
             document.getElementById('username').innerText = user.first_name;
             
             fetch('/api/getUser', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id })
             })
             .then(response => response.json())
             .then(data => {
-                if (data.balance !== undefined) {
-                    document.getElementById('balance').innerText = data.balance + ' TON';
-                } else {
-                    document.getElementById('balance').innerText = '0 TON';
-                }
-            })
-            .catch(err => {
-                document.getElementById('balance').innerText = 'Ошибка';
+                if (data.balance !== undefined) balanceEl.innerText = data.balance + ' TON';
             });
-        } else {
-            document.getElementById('username').innerText = 'Гость';
-            document.getElementById('balance').innerText = '0 TON';
         }
+
+        playBtn.addEventListener('click', async () => {
+            if (!user) return;
+            
+            playBtn.disabled = true;
+            playBtn.innerText = 'Крутим кейс...';
+            messageEl.innerText = '';
+
+            try {
+                const response = await fetch('/api/openCase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id })
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    messageEl.style.color = '#ff4444';
+                    messageEl.innerText = data.error;
+                } else {
+                    messageEl.style.color = '#00ff00';
+                    messageEl.innerText = 'Вы выиграли: ' + data.prize;
+                    balanceEl.innerText = data.newBalance + ' TON';
+                }
+            } catch (err) {
+                messageEl.style.color = '#ff4444';
+                messageEl.innerText = 'Ошибка сети';
+            }
+
+            playBtn.disabled = false;
+            playBtn.innerText = 'Открыть кейс (10 TON)';
+        });
     </script>
 
 </body>
