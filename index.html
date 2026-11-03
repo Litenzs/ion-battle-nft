@@ -5,16 +5,26 @@
     <title>Ion Battle Nft</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
     <style>
-        body { background-color: #121212; color: white; text-align: center; font-family: sans-serif; margin: 0; padding: 20px; }
+        body { background-color: #121212; color: white; text-align: center; font-family: sans-serif; margin: 0; padding: 20px; overflow-x: hidden; }
         h1 { color: #00ffff; font-size: 28px; margin-bottom: 20px; }
         h2 { color: #fff; font-size: 20px; text-align: left; margin-top: 30px; }
+        
         .profile-card { background-color: #1e1e1e; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0, 255, 255, 0.1); }
         .user-name { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
         .balance-label { color: #888; font-size: 14px; }
         .balance-amount { color: #ffd700; font-size: 26px; font-weight: bold; margin-top: 5px; }
+
+        .roulette-wrapper { position: relative; width: 100%; height: 120px; background: #1e1e1e; border-radius: 10px; overflow: hidden; margin: 20px 0; border: 2px solid #333; display: none; }
+        .roulette-wrapper.active { display: block; }
+        .roulette-marker { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 4px; height: 100%; background-color: #00ffff; z-index: 10; box-shadow: 0 0 10px #00ffff; }
+        .roulette-reel { display: flex; position: absolute; left: 0; top: 0; height: 100%; align-items: center; transition: transform 4s cubic-bezier(0.1, 0.7, 0.1, 1); }
+        .reel-item { min-width: 120px; width: 120px; height: 100%; display: flex; align-items: center; justify-content: center; border-right: 1px solid #333; box-sizing: border-box; }
+        .lottie-container { width: 90px; height: 90px; }
+
         .message-box { font-size: 20px; font-weight: bold; margin: 20px 0; min-height: 30px; color: #00ff00; }
-        .play-btn { padding: 18px 40px; font-size: 20px; background-color: #0088cc; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; }
+        .play-btn { padding: 18px 40px; font-size: 20px; background-color: #0088cc; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; transition: 0.3s; }
         .play-btn:disabled { background-color: #555; }
         
         .inventory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
@@ -39,6 +49,11 @@
             <div class="balance-amount" id="balance">0 TON</div>
         </div>
 
+        <div class="roulette-wrapper" id="rouletteWrapper">
+            <div class="roulette-marker"></div>
+            <div class="roulette-reel" id="rouletteReel"></div>
+        </div>
+
         <div class="message-box" id="message"></div>
         <button class="play-btn" id="playBtn">Открыть кейс (10 TON)</button>
 
@@ -61,6 +76,16 @@
         const loader = document.getElementById('loader');
         const mainContent = document.getElementById('main-content');
         const errorBox = document.getElementById('error-box');
+        const rouletteWrapper = document.getElementById('rouletteWrapper');
+        const rouletteReel = document.getElementById('rouletteReel');
+
+        const lottieLinks = {
+            'Ракета': 'https://lottie.host/8b886126-6c22-4352-8f23-647791192a68/R4yB8m6J4h.json',
+            'Звезда': 'https://lottie.host/32041907-789f-409a-a394-34e3927d88e0/8M1M4Gk2K1.json',
+            'Мишка': 'https://lottie.host/890287e8-3a2e-44c1-9273-09b0a5b1a4e2/8Y7x2B3z8W.json',
+            'Алмаз': 'https://lottie.host/5682614b-0b8a-4f6a-a3e2-4492b45e7712/J3Q2z8x9Y4.json',
+            'Клевер': 'https://lottie.host/d9d40a83-0256-4f64-8b1c-2146611462d3/X1V5b4C3t8.json'
+        };
 
         async function loadProfile() {
             try {
@@ -69,10 +94,9 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: user.id })
                 });
-                
                 if (!response.ok) throw new Error('Сервер вернул ошибку ' + response.status);
-
                 const data = await response.json();
+                
                 balanceEl.innerText = data.balance + ' TON';
                 
                 if (data.inventory && data.inventory.length > 0) {
@@ -95,15 +119,16 @@
         if (user) {
             document.getElementById('username').innerText = user.first_name;
             loadProfile();
-        } else {
-            loader.classList.add('hidden');
-            errorBox.innerText = 'Ошибка: Не удалось получить данные от Telegram.';
         }
 
         playBtn.addEventListener('click', async () => {
             playBtn.disabled = true;
             playBtn.innerText = 'Крутим кейс...';
             messageEl.innerText = '';
+            rouletteWrapper.classList.add('active');
+            
+            rouletteReel.style.transition = 'none';
+            rouletteReel.style.transform = 'translateX(0)';
 
             try {
                 const response = await fetch('/api/openCase', {
@@ -116,17 +141,65 @@
                 if (data.error) {
                     messageEl.style.color = '#ff4444';
                     messageEl.innerText = data.error;
-                } else {
-                    messageEl.style.color = '#00ff00';
-                    messageEl.innerText = 'Вы выиграли: ' + data.prize;
-                    await loadProfile(); 
+                    rouletteWrapper.classList.remove('active');
+                    playBtn.disabled = false;
+                    playBtn.innerText = 'Открыть кейс (10 TON)';
+                    return;
                 }
+
+                let reelHTML = '';
+                const winnerIndex = 40;
+                
+                for (let i = 0; i < 50; i++) {
+                    let itemName = '';
+                    if (i === winnerIndex) {
+                        itemName = data.prize.split(' ')[1];
+                    } else {
+                        const keys = Object.keys(lottieLinks);
+                        itemName = keys[Math.floor(Math.random() * keys.length)];
+                    }
+                    reelHTML += `<div class="reel-item"><div class="lottie-container" data-gift="${itemName}"></div></div>`;
+                }
+                rouletteReel.innerHTML = reelHTML;
+
+                document.querySelectorAll('.lottie-container').forEach(container => {
+                    const giftName = container.getAttribute('data-gift');
+                    const path = lottieLinks[giftName] || lottieLinks['Звезда'];
+                    
+                    lottie.loadAnimation({
+                        container: container,
+                        renderer: 'svg',
+                        loop: true,
+                        autoplay: true,
+                        path: path
+                    });
+                });
+
+                const itemWidth = 120;
+                const containerWidth = rouletteWrapper.offsetWidth;
+                const targetPosition = (winnerIndex * itemWidth) + (itemWidth / 2) - (containerWidth / 2);
+
+                setTimeout(() => {
+                    rouletteReel.style.transition = 'transform 4s cubic-bezier(0.1, 0.7, 0.1, 1)';
+                    rouletteReel.style.transform = `translateX(-${targetPosition}px)`;
+
+                    setTimeout(async () => {
+                        messageEl.style.color = '#00ff00';
+                        messageEl.innerText = 'Вы выиграли: ' + data.prize;
+                        await loadProfile(); 
+                        playBtn.disabled = false;
+                        playBtn.innerText = 'Открыть кейс (10 TON)';
+                        setTimeout(() => { rouletteWrapper.classList.remove('active'); }, 2000);
+                    }, 4100); 
+                }, 50);
+
             } catch (err) {
                 messageEl.style.color = '#ff4444';
                 messageEl.innerText = 'Ошибка сети';
+                rouletteWrapper.classList.remove('active');
+                playBtn.disabled = false;
+                playBtn.innerText = 'Открыть кейс (10 TON)';
             }
-            playBtn.disabled = false;
-            playBtn.innerText = 'Открыть кейс (10 TON)';
         });
     </script>
 
