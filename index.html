@@ -8,18 +8,9 @@
     <style>
         body { background-color: #121212; color: white; text-align: center; font-family: sans-serif; margin: 0; padding: 20px; }
         h1 { color: #00ffff; font-size: 28px; margin-bottom: 20px; }
-        h2 { color: #fff; font-size: 20px; text-align: left; margin-top: 30px; }
-        .profile-card { background-color: #1e1e1e; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0, 255, 255, 0.1); }
+        .profile-card { background-color: #1e1e1e; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
         .user-name { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
-        .balance-label { color: #888; font-size: 14px; }
         .balance-amount { color: #ffd700; font-size: 26px; font-weight: bold; margin-top: 5px; }
-        .message-box { font-size: 20px; font-weight: bold; margin: 20px 0; min-height: 30px; color: #00ff00; }
-        .play-btn { padding: 18px 40px; font-size: 20px; background-color: #0088cc; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; }
-        .play-btn:disabled { background-color: #555; }
-        
-        .inventory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
-        .inv-item { background-color: #1e1e1e; padding: 15px 5px; border-radius: 10px; font-size: 14px; text-align: center; border: 1px solid #333; }
-
         .loader { border: 4px solid #333; border-top: 4px solid #00ffff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 50px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .hidden { display: none; }
@@ -28,23 +19,13 @@
 <body>
 
     <div id="loader" class="loader"></div>
-    <div id="error-box" style="color: #ff4444; font-weight: bold; margin-top: 20px;"></div>
+    <div id="error-box" style="color: #ff4444; font-weight: bold; margin-top: 20px; font-size: 18px; padding: 10px;"></div>
 
     <div id="main-content" class="hidden">
         <h1>Ion Battle Nft</h1>
-
         <div class="profile-card">
             <div class="user-name" id="username">Загрузка...</div>
-            <div class="balance-label">Твой баланс:</div>
             <div class="balance-amount" id="balance">0 TON</div>
-        </div>
-
-        <div class="message-box" id="message"></div>
-        <button class="play-btn" id="playBtn">Открыть кейс (10 TON)</button>
-
-        <h2>🎒 Мой Инвентарь</h2>
-        <div class="inventory-grid" id="inventory">
-            <div style="color: #888; grid-column: span 3;">Пока пусто...</div>
         </div>
     </div>
 
@@ -54,81 +35,53 @@
         tg.expand();
 
         const user = tg.initDataUnsafe?.user;
-        const playBtn = document.getElementById('playBtn');
-        const balanceEl = document.getElementById('balance');
-        const messageEl = document.getElementById('message');
-        const inventoryEl = document.getElementById('inventory');
         const loader = document.getElementById('loader');
-        const mainContent = document.getElementById('main-content');
         const errorBox = document.getElementById('error-box');
+        const mainContent = document.getElementById('main-content');
 
         async function loadProfile() {
             if (!user) return;
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // Таймаут 5 секунд
+
             try {
                 const response = await fetch('/api/getProfile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.id })
+                    body: JSON.stringify({ userId: user.id }),
+                    signal: controller.signal // Передаем сигнал для отмены
                 });
                 
+                clearTimeout(timeoutId);
+                
                 if (!response.ok) {
-                    throw new Error('Сервер ответил ошибкой ' + response.status);
+                    throw new Error('Сервер вернул ошибку ' + response.status);
                 }
 
                 const data = await response.json();
-                balanceEl.innerText = data.balance + ' TON';
+                document.getElementById('username').innerText = user.first_name;
+                document.getElementById('balance').innerText = data.balance + ' TON';
                 
-                if (data.inventory && data.inventory.length > 0) {
-                    inventoryEl.innerHTML = '';
-                    data.inventory.forEach(item => {
-                        const div = document.createElement('div');
-                        div.className = 'inv-item';
-                        div.innerText = item.item_name;
-                        inventoryEl.appendChild(div);
-                    });
-                }
                 loader.classList.add('hidden');
                 mainContent.classList.remove('hidden');
             } catch (err) {
+                clearTimeout(timeoutId);
                 loader.classList.add('hidden');
-                errorBox.innerText = 'Ошибка: ' + err.message;
+                if (err.name === 'AbortError') {
+                    errorBox.innerText = 'Ошибка: Сервер не отвечает (превышено время ожидания)';
+                } else {
+                    errorBox.innerText = 'Ошибка: ' + err.message;
+                }
             }
         }
 
         if (user) {
-            document.getElementById('username').innerText = user.first_name;
             loadProfile();
+        } else {
+            loader.classList.add('hidden');
+            errorBox.innerText = 'Ошибка: Telegram не передал данные пользователя';
         }
-
-        playBtn.addEventListener('click', async () => {
-            if (!user) return;
-            playBtn.disabled = true;
-            playBtn.innerText = 'Крутим кейс...';
-            messageEl.innerText = '';
-
-            try {
-                const response = await fetch('/api/openCase', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.id })
-                });
-                const data = await response.json();
-
-                if (data.error) {
-                    messageEl.style.color = '#ff4444';
-                    messageEl.innerText = data.error;
-                } else {
-                    messageEl.style.color = '#00ff00';
-                    messageEl.innerText = 'Вы выиграли: ' + data.prize;
-                    await loadProfile(); 
-                }
-            } catch (err) {
-                messageEl.style.color = '#ff4444';
-                messageEl.innerText = 'Ошибка сети';
-            }
-            playBtn.disabled = false;
-            playBtn.innerText = 'Открыть кейс (10 TON)';
-        });
     </script>
 
 </body>
