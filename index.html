@@ -17,38 +17,35 @@
         .play-btn { padding: 18px 40px; font-size: 20px; background-color: #0088cc; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; }
         .play-btn:disabled { background-color: #555; }
         
-        .inventory-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .inv-item {
-            background-color: #1e1e1e;
-            padding: 15px 5px;
-            border-radius: 10px;
-            font-size: 14px;
-            text-align: center;
-            border: 1px solid #333;
-        }
+        .inventory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .inv-item { background-color: #1e1e1e; padding: 15px 5px; border-radius: 10px; font-size: 14px; text-align: center; border: 1px solid #333; }
+
+        /* Стили для лоадера */
+        .loader { border: 4px solid #333; border-top: 4px solid #00ffff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 50px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <h1>Ion Battle Nft</h1>
+    <div id="loader" class="loader"></div>
 
-    <div class="profile-card">
-        <div class="user-name" id="username">Загрузка...</div>
-        <div class="balance-label">Твой баланс:</div>
-        <div class="balance-amount" id="balance">...</div>
-    </div>
+    <div id="main-content" class="hidden">
+        <h1>Ion Battle Nft</h1>
 
-    <div class="message-box" id="message"></div>
-    <button class="play-btn" id="playBtn">Открыть кейс (10 TON)</button>
+        <div class="profile-card">
+            <div class="user-name" id="username">Загрузка...</div>
+            <div class="balance-label">Твой баланс:</div>
+            <div class="balance-amount" id="balance">0 TON</div>
+        </div>
 
-    <h2>🎒 Мой Инвентарь</h2>
-    <div class="inventory-grid" id="inventory">
-        <div style="color: #888; grid-column: span 3;">Пока пусто...</div>
+        <div class="message-box" id="message"></div>
+        <button class="play-btn" id="playBtn">Открыть кейс (10 TON)</button>
+
+        <h2>🎒 Мой Инвентарь</h2>
+        <div class="inventory-grid" id="inventory">
+            <div style="color: #888; grid-column: span 3;">Пока пусто...</div>
+        </div>
     </div>
 
     <script>
@@ -61,19 +58,23 @@
         const balanceEl = document.getElementById('balance');
         const messageEl = document.getElementById('message');
         const inventoryEl = document.getElementById('inventory');
+        const loader = document.getElementById('loader');
+        const mainContent = document.getElementById('main-content');
 
-        async function loadInventory() {
+        async function loadProfile() {
             if (!user) return;
-            const response = await fetch('/api/getInventory', {
+            const response = await fetch('/api/getProfile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id })
             });
             const data = await response.json();
             
-            if (data.length > 0) {
+            balanceEl.innerText = data.balance + ' TON';
+            
+            if (data.inventory.length > 0) {
                 inventoryEl.innerHTML = '';
-                data.forEach(item => {
+                data.inventory.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'inv-item';
                     div.innerText = item.item_name;
@@ -84,16 +85,12 @@
 
         if (user) {
             document.getElementById('username').innerText = user.first_name;
-            fetch('/api/getUser', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.balance !== undefined) balanceEl.innerText = data.balance + ' TON';
+            // Запускаем загрузку данных
+            loadProfile().then(() => {
+                // Когда данные загрузились — скрываем лоадер и показываем игру
+                loader.classList.add('hidden');
+                mainContent.classList.remove('hidden');
             });
-            loadInventory();
         }
 
         playBtn.addEventListener('click', async () => {
@@ -116,8 +113,8 @@
                 } else {
                     messageEl.style.color = '#00ff00';
                     messageEl.innerText = 'Вы выиграли: ' + data.prize;
-                    balanceEl.innerText = data.newBalance + ' TON';
-                    loadInventory();
+                    // Обновляем данные на экране после выигрыша
+                    await loadProfile(); 
                 }
             } catch (err) {
                 messageEl.style.color = '#ff4444';
